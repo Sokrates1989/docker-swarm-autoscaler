@@ -1,0 +1,5 @@
+# Do not version logs. 
+logs
+# But keep folder structure.
+!logs/.gitkeep
+!logs/dayBased/.gitkeep
