@@ -15,9 +15,13 @@ RUN python3 -m venv $VIRTUAL_ENV \
     && pip install -r pip_upgrade.txt --upgrade \
     && rm -rf /root/.cache/pip
 
-
-# Make port 8790 available to the world outside this container.
-EXPOSE 8790
+# Environment variables.
+# Available log levels: "INFO" | "VERBOSE" | "WARNING_AND_ERRORS_ONLY" .
+ENV LOG_LEVEL="INFO"
+# Available log styles: "PRINT_ONLY" | "LOGFILE_ONLY" | "PRINT_AND_LOGFILE" .
+ENV LOG_STYLE="PRINT_AND_LOGFILE"
+# TIMEZONE for location aware timestamps: https://mljar.com/blog/list-pytz-timezones/
+ENV TIMEZONE=""
 
 # Copy the app.
 COPY . /code

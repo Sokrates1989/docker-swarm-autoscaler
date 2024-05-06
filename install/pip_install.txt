@@ -1,2 +1,3 @@
 docker
 prometheus-api-client
+pytz
