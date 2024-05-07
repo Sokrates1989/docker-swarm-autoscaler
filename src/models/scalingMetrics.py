@@ -4,8 +4,8 @@ import converterUtils
 # Definitions.
 from valid_values import ScalingConflictResolution, ScalingSuggestion, ScalingMetricName, MessagingPlatforms
 
-# Logger.
-import logger as Logger
+# MessagePlatformHandler.
+import messagePlatformHandler as MessagePlatformHandler
 
 class ScalingMetrics:
     """Model of scaling metrics for autoscaling service."""
@@ -37,8 +37,8 @@ class ScalingMetrics:
             scaling_suggestion (ScalingSuggestion): The scaling suggestion.
         """
         
-        # Logger.
-        self._logger = Logger.Logger()
+        # MessagePlatformHandler.
+        self._messagePlatformHandler = MessagePlatformHandler.MessagePlatformHandler()
 
         # Value instantiation.
         self._autoscale_service = autoscale_service
@@ -47,7 +47,8 @@ class ScalingMetrics:
         if not isinstance(metric_name, ScalingMetricName):
             valid_metric_names = [member.value for member in ScalingMetricName]        
             error_message=f"\"{self._autoscale_service.get_service_name()}\": ScalingMetrics: Invalid metric_name: \"{str(metric_name)}\". Must be one of ScalingMetricName enum values: {', '.join(valid_metric_names)}."
-            self._logger.error(error_message, self._autoscale_service.get_service_log_level())
+            self._messagePlatformHandler.handle_error(error_message, self._autoscale_service)
+            self._messagePlatformHandler.send_all_accumulated_messages()
             raise ValueError(error_message)
 
         self._metric_name = metric_name
