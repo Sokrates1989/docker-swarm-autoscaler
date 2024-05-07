@@ -8,8 +8,11 @@ import dockerServiceAutoscalerLabelHandler as DockerServiceAutoscalerLabelHandle
 import prometheusConnector as PrometheusConnector
 prometheusConnector = PrometheusConnector.PrometheusConnector()
 
-# Label definitions.
-from label_definitions import ScalingConflictResolution, ScalingSuggestion
+# Definitions.
+from valid_values import ScalingConflictResolution, ScalingSuggestion, ScalingMetricName, MessagingPlatforms
+
+# Custom Scaling Metrics class.
+import scalingMetrics as ScalingMetrics
 
 # Logger.
 import logger as Logger
@@ -33,16 +36,34 @@ class DockerServiceScaler:
     def __init__(self):
         self.client = docker.from_env()
 
-    def _scale_service(self, autoscale_service, replicas):
+    def auto_scale_services(self):
+        """
+        Look for services with autoscale enabled and then scale based on prometheus metrics.
+        """
+        # Loop through all autoscale services.
+        autoscale_services = self._get_autoscale_services()
+        for autoscale_service in autoscale_services:
+
+            # Get individual metric's suggestions.
+            cpu_scale_metrics = self._get_cpu_scale_metrics(autoscale_service)
+            memory_scale_metrics = self._get_memory_scale_metrics(autoscale_service)
+            allScalingMetrics=[cpu_scale_metrics, memory_scale_metrics]
+
+            # Get final scaling suggestion based on conflict resolution settings.
+            scaling_suggestion=self._get_final_scale_suggestion(autoscale_service, cpu_scale_metrics.get_scaling_suggestion(), memory_scale_metrics.get_scaling_suggestion())
+            
+            # Rescale service based on scaling suggestion.
+            self._handle_scaling_suggestion(autoscale_service, scaling_suggestion, allScalingMetrics)
+
+    
+
+    def _scale_service(self, autoscale_service, replicas, scaling_metrics=[]):
         """
         Scale the specified service to the given number of replicas.
 
         Parameters:
             autoscale_service (AutoScaleService): An AutoScaleService object.
             replicas (int): The desired number of replicas for the service.
-
-        Returns:
-            None
         """
         try:
             # Get the service.
@@ -54,25 +75,27 @@ class DockerServiceScaler:
             # Evaluate sclaing success and return state of scaling attempt.    
             if success_scaling:
                 successMsg = f"Successfully scaled service \"{autoscale_service.get_service_name()}\" to \"{replicas}\" replicas."
-                logger.information(successMsg, autoscale_service.get_service_log_level())
-                return True
+
+                # Add metric info to message.
+                for scalingMetric in scaling_metrics:
+                    successMsg += " - " + scalingMetric.as_string(MessagingPlatforms.LOGGING)
+
+                logger.importantInfo(successMsg, autoscale_service.get_service_log_level())
             else:
                 # Print, log and return error message.
                 errorMsg=f"Unknown issue: Could not change service \"{autoscale_service.get_service_name()}\" to \"{replicas}\" replicas."
                 logger.error(errorMsg, autoscale_service.get_service_log_level())
-                return errorMsg
         # Service not found error.
         except docker.errors.NotFound:
             # Print, log and return error message.
             errorMsg=f"Service {autoscale_service.get_service_name()} not found."
             logger.error(errorMsg, autoscale_service.get_service_log_level())
-            return errorMsg
         # Other error.
         except docker.errors.APIError as e:
             # Print, log and return error message.
             errorMsg=f"Error occurred while scaling service \"{autoscale_service.get_service_name()}\": {e}"
             logger.error(errorMsg, autoscale_service.get_service_log_level())
-            return errorMsg
+
 
     def _get_current_replicas(self, service_name):
         """
@@ -125,37 +148,21 @@ class DockerServiceScaler:
             errorMsg=f"Error occurred while fetching autoscale services: {e}"
             logger.error(errorMsg)
             return autoscale_services
-        
-
-    def auto_scale_services(self):
-        """
-        Look for services with autoscale enabled and then scale based on prometheus metrics.
-        """
-        # Loop through all autoscale services.
-        autoscale_services = self._get_autoscale_services()
-        for autoscale_service in autoscale_services:
-
-            # Get individual metric's suggestions.
-            cpu_scale_suggestion = self._get_cpu_scale_suggestion(autoscale_service)
-            memory_scale_suggestion = self._get_memory_scale_suggestion(autoscale_service)
-
-            # Get final scaling suggestion based on conflict resolution settings.
-            scaling_suggestion=self._get_final_scale_suggestion(autoscale_service, cpu_scale_suggestion, memory_scale_suggestion)
-            
-            # Rescale service based on scaling suggestion.
-            self._handle_scaling_suggestion(autoscale_service, scaling_suggestion)
 
 
-    def _get_cpu_scale_suggestion(self, autoscale_service):
+    def _get_cpu_scale_metrics(self, autoscale_service):
         """
         Gets the scaling suggestion based on cpu thresholds, settings and values.
 
         Returns:
-            ScalingSuggestion.
+            ScalingMetrics.
         """
         # Defaults.
         cpu_scale_suggestion = ScalingSuggestion.KEEP_REPLICAS
         scaling_conflict_resolution=autoscale_service.get_scaling_conflict_resolution()
+
+        # Prepare return class.
+        cpuScalingMetrics = ScalingMetrics.ScalingMetrics(autoscale_service, ScalingMetricName.CPU, autoscale_service.is_scaling_based_on_cpu_enabled())
 
         # Cpu based scaling enabled?
         if autoscale_service.is_scaling_based_on_cpu_enabled():
@@ -207,25 +214,37 @@ class DockerServiceScaler:
             # Final cpu dcision verbose info.
             verboseInfo = f"\"{autoscale_service.get_service_name()}\" Final CPU Scaling Suggestion: \"{cpu_scale_suggestion}\""
             logger.verboseInfo(verboseInfo, autoscale_service.get_service_log_level())
+
+            # Setting values to return class.
+            cpuScalingMetrics.set_upscale_threshold(autoscale_service.get_cpu_upscale_threshold())
+            cpuScalingMetrics.set_upscale_value(current_cpu_upscale_value)
+            cpuScalingMetrics.set_downscale_threshold(autoscale_service.get_cpu_downscale_threshold())
+            cpuScalingMetrics.set_downscale_value(current_cpu_downscale_value)
+            cpuScalingMetrics.set_conflict_resolution(scaling_conflict_resolution)
+            cpuScalingMetrics.set_scaling_suggestion(cpu_scale_suggestion)
+            
         else:
             # Verbose info cpu based scaling not enabled.
             verboseInfo = f"\"{autoscale_service.get_service_name()}\" CPU based scaling not enabled"
             logger.verboseInfo(verboseInfo, autoscale_service.get_service_log_level())
         
         # Return scaling suggestion.
-        return cpu_scale_suggestion
+        return cpuScalingMetrics
     
 
-    def _get_memory_scale_suggestion(self, autoscale_service):
+    def _get_memory_scale_metrics(self, autoscale_service):
         """
         Gets the scaling suggestion based on memory thresholds, settings and values.
 
         Returns:
-            ScalingSuggestion.
+            ScalingMetrics.
         """
         # Defaults.
         memory_scale_suggestion = ScalingSuggestion.KEEP_REPLICAS
         scaling_conflict_resolution=autoscale_service.get_scaling_conflict_resolution()
+
+        # Prepare return class.
+        memoryScalingMetrics = ScalingMetrics.ScalingMetrics(autoscale_service, ScalingMetricName.MEMORY, autoscale_service.is_scaling_based_on_memory_enabled())
 
         # Is memory based scaling enabled?
         if autoscale_service.is_scaling_based_on_memory_enabled():
@@ -273,13 +292,21 @@ class DockerServiceScaler:
             # Final memory decision verbose info.
             verboseInfo = f"\"{autoscale_service.get_service_name()}\" Final Memory Scaling Suggestion: \"{memory_scale_suggestion}\""
             logger.verboseInfo(verboseInfo, autoscale_service.get_service_log_level())
+
+            # Setting values to return class.
+            memoryScalingMetrics.set_upscale_threshold(autoscale_service.get_memory_upscale_threshold())
+            memoryScalingMetrics.set_upscale_value(current_memory_value)
+            memoryScalingMetrics.set_downscale_threshold(autoscale_service.get_memory_downscale_threshold())
+            memoryScalingMetrics.set_downscale_value(current_memory_value)
+            memoryScalingMetrics.set_conflict_resolution(scaling_conflict_resolution)
+            memoryScalingMetrics.set_scaling_suggestion(memory_scale_suggestion)
         else:
             # Verbose info memory based scaling not enabled.
             verboseInfo = f"\"{autoscale_service.get_service_name()}\" Memory based scaling not enabled"
             logger.verboseInfo(verboseInfo, autoscale_service.get_service_log_level())
         
         # Return scaling suggestion.
-        return memory_scale_suggestion
+        return memoryScalingMetrics
     
 
     
@@ -356,7 +383,7 @@ class DockerServiceScaler:
         return scaling_suggestion
     
     
-    def _handle_scaling_suggestion(self, autoscale_service, scaling_suggestion):
+    def _handle_scaling_suggestion(self, autoscale_service, scaling_suggestion, scaling_metrics=[]):
         """
         Scales the service based on the scaling suggestion.
 
@@ -393,7 +420,7 @@ class DockerServiceScaler:
 
         # Does amount of replicas have to be changed?
         if new_amount_replicas != current_amount_replicas:
-            self._scale_service(autoscale_service, new_amount_replicas)
+            self._scale_service(autoscale_service, new_amount_replicas, scaling_metrics)
         else:
             # Info about keeping replicas.
             keeping_replica_msg = f"Keeping replicas of service \"{autoscale_service.get_service_name()}\" at \"{current_amount_replicas}\""

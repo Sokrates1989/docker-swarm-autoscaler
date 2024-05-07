@@ -1,8 +1,9 @@
 # Conversion.
 import converterUtils
 
-# Label definitions.
-from label_definitions import cpu_labels, memory_labels, ScalingConflictResolution
+# Definitions.
+from label_definitions import cpu_labels, memory_labels
+from valid_values import ScalingConflictResolution
 
 class AutoScaleService:
     def __init__(self, service_name, autoscale_labels):

@@ -16,7 +16,7 @@ RUN python3 -m venv $VIRTUAL_ENV \
     && rm -rf /root/.cache/pip
 
 # Environment variables.
-# Available log levels: "INFO" | "VERBOSE" | "WARNING_AND_ERRORS_ONLY" .
+# Available log levels: "INFO" | "VERBOSE" | "IMPORTANT_ONLY" .
 ENV LOG_LEVEL="INFO"
 # Available log styles: "PRINT_ONLY" | "LOGFILE_ONLY" | "PRINT_AND_LOGFILE" .
 ENV LOG_STYLE="PRINT_AND_LOGFILE"

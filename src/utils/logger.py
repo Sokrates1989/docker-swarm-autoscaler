@@ -21,16 +21,20 @@ class Logger:
             self.logtext_info = logScopeStartText + "_INFO"
             self.logtext_warning = logScopeStartText + "_WARNING"
             self.logtext_error = logScopeStartText + "_ERROR"
+            self.logtext_important = logScopeStartText + "_IMPORTANT"
         else:
             self.logtext_verbose = "UNKNOWN_VERBOSE"
             self.logtext_info = "UNKNOWN_INFO"
             self.logtext_warning = "UNKNOWN_WARNING"
             self.logtext_error = "UNKNOWN_ERROR"
+            self.logtext_important = "UNKNOWN_IMPORTANT"
 
         self.logPath = os.path.join("/code", "logs")
         self.globalErrorLogFile = os.path.join(self.logPath, "errorlog.txt")
+        self.globalImportantLogFile = os.path.join(self.logPath, "importantlog.txt")
         self.globalLogFile = os.path.join(self.logPath, "log.txt")
         fileUtils.createFileIfNotExists(self.globalErrorLogFile)
+        fileUtils.createFileIfNotExists(self.globalImportantLogFile)
         fileUtils.createFileIfNotExists(self.globalLogFile)
 
         self.dayLogPath = os.path.join(self.logPath, "dayBased")
@@ -40,7 +44,7 @@ class Logger:
         warning_messages = []
 
         # Log Level.
-        self._valid_log_levels = ["INFO", "VERBOSE", "WARNING_AND_ERRORS_ONLY"]
+        self._valid_log_levels = ["INFO", "VERBOSE", "IMPORTANT_ONLY"]
         self._global_log_level = "INFO"
         try:
             self._global_log_level = os.getenv("LOG_LEVEL")
@@ -78,11 +82,37 @@ class Logger:
         if useDateStringUtils:
             dateStringForLogFileName = dateStringUtils.getDateStringForLogFileName()
         dayBasedErrorLogFileName = dateStringForLogFileName + "_errorlog.txt"
+        dayBasedImportantLogFileName = dateStringForLogFileName + "_importantlog.txt"
         dayBasedLogFileName = dateStringForLogFileName + "_log.txt"
         self.dayBasedErrorLogFile = os.path.join(self.dayLogPath, dayBasedErrorLogFileName)
+        self.dayBasedImportantLogFile = os.path.join(self.dayLogPath, dayBasedImportantLogFileName)
         self.dayBasedLogFile = os.path.join(self.dayLogPath, dayBasedLogFileName)
         fileUtils.createFileIfNotExists(self.dayBasedErrorLogFile)
+        fileUtils.createFileIfNotExists(self.dayBasedImportantLogFile)
         fileUtils.createFileIfNotExists(self.dayBasedLogFile)
+
+
+    def importantInfo(self, importantInfoToLog, customLogLevel=None):
+        """
+        Logs an Error to 4 logfiles.
+
+        Args:
+            importantInfoToLog (str): Important info message to log.
+            customLogLevel (str|None): An override for the global log level. Services can have individual log levels.
+        """
+        self.updateDayBasedLogFilePaths()
+        fullLogText = "" + dateStringUtils.getDateStringForLogTag() + " - " + "[" + self.logtext_important + "]" + " - [" + importantInfoToLog + "]"
+
+        # Log style logging?
+        if self._log_style == "LOGFILE_ONLY" or self._log_style == "PRINT_AND_LOGFILE":
+            self._log(self.globalImportantLogFile, fullLogText)
+            self._log(self.globalLogFile, fullLogText)
+            self._log(self.dayBasedImportantLogFile, fullLogText)
+            self._log(self.dayBasedLogFile, fullLogText)
+
+        # Log style printing?
+        if self._log_style == "PRINT_ONLY" or self._log_style == "PRINT_AND_LOGFILE":
+            print(fullLogText)
 
 
     def error(self, errorToLog, customLogLevel=None):
@@ -99,8 +129,10 @@ class Logger:
         # Log style logging?
         if self._log_style == "LOGFILE_ONLY" or self._log_style == "PRINT_AND_LOGFILE":
             self._log(self.globalErrorLogFile, fullLogText)
+            self._log(self.globalImportantLogFile, fullLogText)
             self._log(self.globalLogFile, fullLogText)
             self._log(self.dayBasedErrorLogFile, fullLogText)
+            self._log(self.dayBasedImportantLogFile, fullLogText)
             self._log(self.dayBasedLogFile, fullLogText)
 
         # Log style printing?
@@ -127,8 +159,10 @@ class Logger:
         # Log style logging?
         if self._log_style == "LOGFILE_ONLY" or self._log_style == "PRINT_AND_LOGFILE":
             self._log(self.globalErrorLogFile, fullLogText)
+            self._log(self.globalImportantLogFile, fullLogText)
             self._log(self.globalLogFile, fullLogText)
             self._log(self.dayBasedErrorLogFile, fullLogText)
+            self._log(self.dayBasedImportantLogFile, fullLogText)
             self._log(self.dayBasedLogFile, fullLogText)
 
         # Log style printing?

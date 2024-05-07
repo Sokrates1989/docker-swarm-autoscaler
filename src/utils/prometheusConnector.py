@@ -37,6 +37,6 @@ class PrometheusConnector:
         result = self._prometheusClient.custom_query(query=customized_memory_query)
 
         # Return memory value.
-        return int(result[0]['value'][1]) if result[0]['value'][1] else 0
+        return float(result[0]['value'][1]) if result[0]['value'][1] else 0
 
     

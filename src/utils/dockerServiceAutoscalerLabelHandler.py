@@ -10,8 +10,9 @@ import autoScaleService as AutoScaleService
 # Conversion.
 import converterUtils
 
-# Label definitions.
-from label_definitions import cpu_labels, memory_labels, ScalingConflictResolution, LogLevel
+# Definitions.
+from label_definitions import cpu_labels, memory_labels
+from valid_values import ScalingConflictResolution, LogLevel
 
 class DockerServiceAutoscalerLabelHandler:
     """

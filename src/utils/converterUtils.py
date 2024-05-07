@@ -33,9 +33,9 @@ def bytes_to_human_readable_storage(bytes_size):
     Convert bytes to memory or storage string.
     """
     try:
-        bytes_size = int(bytes_size)
+        bytes_size = float(bytes_size)
         if bytes_size < 0:
-            raise ValueError("Size must be a positive integer.")
+            raise ValueError("Size must be a positive float.")
         elif bytes_size < 1000:
             return str(bytes_size) + " B"
         elif bytes_size < 1000 * 1000:
@@ -47,7 +47,7 @@ def bytes_to_human_readable_storage(bytes_size):
         else:
             return "{:.2f} TiB".format(bytes_size / (1024 * 1024 * 1024 * 1024))
     except Exception as e:
-        raise ValueError("Invalid size format. Please provide a valid positive integer.")
+        raise ValueError("Invalid size format. Please provide a valid positive float.")
 
 
 def percentage_to_float(percentage):

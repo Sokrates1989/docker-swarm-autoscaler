@@ -1,5 +1,3 @@
-from enum import Enum
-
 # Define what labels define cpu scaling and what type of they should be.
 cpu_labels = [
     {
@@ -37,21 +35,3 @@ memory_labels = [
         "required": True
     }
 ]
-
-class ScalingConflictResolution(Enum):
-    SCALE_UP = "scale_up"
-    SCALE_DOWN = "scale_down"
-    KEEP_REPLICAS = "keep_replicas"
-    ADHERE_TO_MEMORY = "adhere_to_memory"
-    ADHERE_TO_CPU = "adhere_to_cpu"
-
-
-class ScalingSuggestion(Enum):
-    SCALE_UP = "scale_up"
-    SCALE_DOWN = "scale_down"
-    KEEP_REPLICAS = "keep_replicas"
-
-class LogLevel(Enum):
-    INFO = "INFO"
-    VERBOSE = "VERBOSE"
-    WARNING_AND_ERRORS_ONLY = "WARNING_AND_ERRORS_ONLY"
