@@ -1,3 +1,7 @@
+# Validation.
+import validationUtils 
+
+# Memory.
 def human_readable_storage_to_bytes(size):
     """
     Convert memory or storage string to bytes.
@@ -49,7 +53,7 @@ def bytes_to_human_readable_storage(bytes_size):
     except Exception as e:
         raise ValueError("Invalid size format. Please provide a valid positive float.")
 
-
+# CPU.
 def percentage_to_float(percentage):
     """
     Convert percentage string to float.
@@ -57,7 +61,7 @@ def percentage_to_float(percentage):
     percentage = percentage.strip().lower()
     try:
         if percentage.endswith('%'):
-            value = int(percentage[:-1])
+            value = float(percentage[:-1])
         else:
             value = float(percentage)
         
@@ -66,7 +70,8 @@ def percentage_to_float(percentage):
         else:
             raise ValueError("Percentage value must be between 0 and 100.")
     except Exception as e:
-        raise ValueError("Invalid percentage format. Please use '%' or any valid float value between 0 and 100.")
+        raise ValueError("Invalid percentage format. Please use <EMPHASIZE_STRING_START_TAG>%</EMPHASIZE_STRING_END_TAG> or any valid float value between 0 and 100.")
+
 
 def float_to_percentage(float_value):
     """
@@ -82,3 +87,43 @@ def float_to_percentage(float_value):
         raise ValueError("Invalid float value. Please provide a valid float value between 0 and 100.")
 
     
+
+
+def get_email_array_from_emails_list_string(emails_list_string):
+    """
+    Extracts an array of emails from a comma-separated string of emails.
+
+    Args:
+    - emails_list_string (str): A comma-separated string containing email addresses.
+
+    Returns:
+    A tuple consisting of:
+    - valid_emails (list): A list of valid email addresses extracted from the input string.
+    - warnings (list): A list of warnings generated during the process, such as invalid emails.
+    """
+    warnings = []  # A list to store any warnings encountered during processing.
+    valid_emails = []  # A list to store valid email addresses.
+
+
+    try:
+        # If the input string is empty or 'None', return empty lists.
+        if not emails_list_string or emails_list_string.lower() == "none":
+            return valid_emails, warnings
+
+        # Split the string by commas and strip any whitespace from each .
+        email_array = [email.strip() for email in emails_list_string.split(',')]
+
+        # Validate each email in the array
+        for email in email_array:
+            if validationUtils.is_email_valid(email):
+                valid_emails.append(email)
+            else:
+                # If an email is invalid, add a warning to the list.
+                warnings.append(f"Invalid Email: <EMPHASIZE_STRING_START_TAG>{email}</EMPHASIZE_STRING_END_TAG> was not added to the recipients.")
+
+        return valid_emails, warnings
+        
+    except Exception as e:
+        # If any unexpected error occurs, add a warning with details.
+        warnings.append(f"Error extracting emails from string <EMPHASIZE_STRING_START_TAG>{emails_list_string}</EMPHASIZE_STRING_END_TAG>: {str(e)}")
+        return valid_emails, warnings

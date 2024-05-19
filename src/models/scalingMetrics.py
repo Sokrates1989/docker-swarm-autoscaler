@@ -46,7 +46,7 @@ class ScalingMetrics:
         # Verify if the provided metric_name is valid.
         if not isinstance(metric_name, ScalingMetricName):
             valid_metric_names = [member.value for member in ScalingMetricName]        
-            error_message=f"\"{self._autoscale_service.get_service_name()}\": ScalingMetrics: Invalid metric_name: \"{str(metric_name)}\". Must be one of ScalingMetricName enum values: {', '.join(valid_metric_names)}."
+            error_message=f"<EMPHASIZE_STRING_START_TAG>{self._autoscale_service.get_service_name()}</EMPHASIZE_STRING_END_TAG>: ScalingMetrics: Invalid metric_name: <EMPHASIZE_STRING_START_TAG>{str(metric_name)}</EMPHASIZE_STRING_END_TAG>. Must be one of ScalingMetricName enum values: {', '.join(valid_metric_names)}."
             self._messagePlatformHandler.handle_error(error_message, self._autoscale_service)
             self._messagePlatformHandler.send_all_accumulated_messages()
             raise ValueError(error_message)
@@ -131,14 +131,14 @@ class ScalingMetrics:
                 metric_specific_icon="⏳💾 "
             
         
-        object_string = f"{metric_specific_icon}ScalingMetric: \"{self.get_metric_name()}\""
+        object_string = f"{metric_specific_icon}ScalingMetric: <EMPHASIZE_STRING_START_TAG>{self.get_metric_name()}</EMPHASIZE_STRING_END_TAG>"
         if self._is_metric_based_scaling_enabled:
             object_string += f"{default_divider}upscale threshold: {self._get_human_readable_upscale_threshold_string()}"
             object_string += f"{default_divider}upscale value: {self._get_human_readable_upscale_value_string()}"
             object_string += f"{default_divider}downscale threshold: {self._get_human_readable_downscale_threshold_string()}"
             object_string += f"{default_divider}downscale value: {self._get_human_readable_downscale_value_string()}"
-            object_string += f"{default_divider}conflict resolution: \"{self._get_visualized_conflict_resolution_string(messagingPlatform)}\""
-            object_string += f"{default_divider}scaling suggestion: \"{self._get_visualized_scaling_suggestion_string(messagingPlatform)}\""
+            object_string += f"{default_divider}conflict resolution: <EMPHASIZE_STRING_START_TAG>{self._get_visualized_conflict_resolution_string(messagingPlatform)}</EMPHASIZE_STRING_END_TAG>"
+            object_string += f"{default_divider}scaling suggestion: <EMPHASIZE_STRING_START_TAG>{self._get_visualized_scaling_suggestion_string(messagingPlatform)}</EMPHASIZE_STRING_END_TAG>"
         else:
             object_string += f"{default_divider}scaling based on this metric is not enabled."
 
@@ -155,11 +155,11 @@ class ScalingMetrics:
         # Message Platform specific strings.
         human_readable_upscale_threshold_string=""
         if self._metric_name == ScalingMetricName.CPU:
-            human_readable_upscale_threshold_string=f"\"{self._upscale_threshold} ({converterUtils.float_to_percentage(self._upscale_threshold)})\""
+            human_readable_upscale_threshold_string=f"<EMPHASIZE_STRING_START_TAG>{self._upscale_threshold} ({converterUtils.float_to_percentage(self._upscale_threshold)})</EMPHASIZE_STRING_END_TAG>"
         elif self._metric_name == ScalingMetricName.MEMORY:
-            human_readable_upscale_threshold_string=f"\"{self._upscale_threshold} ({converterUtils.bytes_to_human_readable_storage(self._upscale_threshold)})\""
+            human_readable_upscale_threshold_string=f"<EMPHASIZE_STRING_START_TAG>{self._upscale_threshold} ({converterUtils.bytes_to_human_readable_storage(self._upscale_threshold)})</EMPHASIZE_STRING_END_TAG>"
         else:
-            human_readable_upscale_threshold_string=f"ScalingMetrics._get_human_readable_upscale_threshold_string(): unimplemented metric_name \"{self._metric_name}\""
+            human_readable_upscale_threshold_string=f"ScalingMetrics._get_human_readable_upscale_threshold_string(): unimplemented metric_name <EMPHASIZE_STRING_START_TAG>{self._metric_name}</EMPHASIZE_STRING_END_TAG>"
         return human_readable_upscale_threshold_string
     
 
@@ -173,11 +173,11 @@ class ScalingMetrics:
         # Message Platform specific strings.
         human_readable_upscale_value_string=""
         if self._metric_name == ScalingMetricName.CPU:
-            human_readable_upscale_value_string=f"\"{self._upscale_value} ({converterUtils.float_to_percentage(self._upscale_value)})\""
+            human_readable_upscale_value_string=f"<EMPHASIZE_STRING_START_TAG>{self._upscale_value} ({converterUtils.float_to_percentage(self._upscale_value)})</EMPHASIZE_STRING_END_TAG>"
         elif self._metric_name == ScalingMetricName.MEMORY:
-            human_readable_upscale_value_string=f"\"{self._upscale_value} ({converterUtils.bytes_to_human_readable_storage(self._upscale_value)})\""
+            human_readable_upscale_value_string=f"<EMPHASIZE_STRING_START_TAG>{self._upscale_value} ({converterUtils.bytes_to_human_readable_storage(self._upscale_value)})</EMPHASIZE_STRING_END_TAG>"
         else:
-            human_readable_upscale_value_string=f"ScalingMetrics._get_human_readable_upscale_value_string(): unimplemented metric_name \"{self._metric_name}\""
+            human_readable_upscale_value_string=f"ScalingMetrics._get_human_readable_upscale_value_string(): unimplemented metric_name <EMPHASIZE_STRING_START_TAG>{self._metric_name}</EMPHASIZE_STRING_END_TAG>"
         return human_readable_upscale_value_string
     
 
@@ -191,11 +191,11 @@ class ScalingMetrics:
         # Message Platform specific strings.
         human_readable_downscale_threshold_string=""
         if self._metric_name == ScalingMetricName.CPU:
-            human_readable_downscale_threshold_string=f"\"{self._downscale_threshold} ({converterUtils.float_to_percentage(self._downscale_threshold)})\""
+            human_readable_downscale_threshold_string=f"<EMPHASIZE_STRING_START_TAG>{self._downscale_threshold} ({converterUtils.float_to_percentage(self._downscale_threshold)})</EMPHASIZE_STRING_END_TAG>"
         elif self._metric_name == ScalingMetricName.MEMORY:
-            human_readable_downscale_threshold_string=f"\"{self._downscale_threshold} ({converterUtils.bytes_to_human_readable_storage(self._downscale_threshold)})\""
+            human_readable_downscale_threshold_string=f"<EMPHASIZE_STRING_START_TAG>{self._downscale_threshold} ({converterUtils.bytes_to_human_readable_storage(self._downscale_threshold)})</EMPHASIZE_STRING_END_TAG>"
         else:
-            human_readable_downscale_threshold_string=f"ScalingMetrics._get_human_readable_downscale_threshold_string(): unimplemented metric_name \"{self._metric_name}\""
+            human_readable_downscale_threshold_string=f"ScalingMetrics._get_human_readable_downscale_threshold_string(): unimplemented metric_name <EMPHASIZE_STRING_START_TAG>{self._metric_name}</EMPHASIZE_STRING_END_TAG>"
         return human_readable_downscale_threshold_string
     
     def _get_human_readable_downscale_value_string(self):
@@ -208,11 +208,11 @@ class ScalingMetrics:
         # Message Platform specific strings.
         human_readable_downscale_value_string=""
         if self._metric_name == ScalingMetricName.CPU:
-            human_readable_downscale_value_string=f"\"{self._downscale_value} ({converterUtils.float_to_percentage(self._downscale_value)})\""
+            human_readable_downscale_value_string=f"<EMPHASIZE_STRING_START_TAG>{self._downscale_value} ({converterUtils.float_to_percentage(self._downscale_value)})</EMPHASIZE_STRING_END_TAG>"
         elif self._metric_name == ScalingMetricName.MEMORY:
-            human_readable_downscale_value_string=f"\"{self._downscale_value} ({converterUtils.bytes_to_human_readable_storage(self._downscale_value)})\""
+            human_readable_downscale_value_string=f"<EMPHASIZE_STRING_START_TAG>{self._downscale_value} ({converterUtils.bytes_to_human_readable_storage(self._downscale_value)})</EMPHASIZE_STRING_END_TAG>"
         else:
-            human_readable_downscale_value_string=f"ScalingMetrics._get_human_readable_downscale_value_string(): unimplemented metric_name \"{self._metric_name}\""
+            human_readable_downscale_value_string=f"ScalingMetrics._get_human_readable_downscale_value_string(): unimplemented metric_name <EMPHASIZE_STRING_START_TAG>{self._metric_name}</EMPHASIZE_STRING_END_TAG>"
         return human_readable_downscale_value_string
     
     

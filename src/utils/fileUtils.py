@@ -20,7 +20,7 @@ def createFileIfNotExists(fileToCreateIfNotExists):
 			os.mknod(fileToCreateIfNotExists)
 			os.chmod(fileToCreateIfNotExists, 0o775)
 	else:
-		print("Cannot create a file without directory (pass filename containing filepath like \"path/to/file.txt\")")
+		print("Cannot create a file without directory (pass filename containing filepath like <EMPHASIZE_STRING_START_TAG>path/to/file.txt</EMPHASIZE_STRING_END_TAG>)")
 
 
 

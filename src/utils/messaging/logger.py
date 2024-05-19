@@ -4,10 +4,13 @@ import os
 import fileUtils
 import dateStringUtils
 
+# MessagePlatformHandler.
+import messagePlatformHandler as MessagePlatformHandler
+
 
 class Logger:
 
-    def __init__(self, logScope=None, useDateStringUtils=True):
+    def __init__(self, messagePlatformHandler: MessagePlatformHandler, logScope=None, useDateStringUtils=True):
         """
         Constructor creating logfiles and paths.
         
@@ -15,6 +18,8 @@ class Logger:
             logScope (str): Scope for logging.
             useDateString (bool): Whether to use the datestringUtils or not. Prevents an infinite loop logging from datestringUtils.
         """
+        self._messagePlatformHandler = messagePlatformHandler
+        
         if logScope is None:
             logScopeStartText = "SWARM_AUTOSCALER"
             self.logtext_verbose = logScopeStartText + "_VERBOSE"
@@ -50,7 +55,7 @@ class Logger:
             self._global_log_level = os.getenv("LOG_LEVEL")
         finally:
             if self._global_log_level not in self._valid_log_levels:
-                warning_msg = f"Logger: Invalid global log level provided: {self._global_log_level}, defaulting to \"INFO\""
+                warning_msg = f"Logger: Invalid global log level provided: <EMPHASIZE_STRING_START_TAG>{self._global_log_level}</EMPHASIZE_STRING_END_TAG>, defaulting to <EMPHASIZE_STRING_START_TAG>INFO</EMPHASIZE_STRING_END_TAG>"
                 warning_messages.append(warning_msg)
                 self._global_log_level = "INFO"
 
@@ -61,13 +66,14 @@ class Logger:
             self._log_style = os.getenv("LOG_STYLE")
         finally:
             if self._log_style not in self._valid_log_styles:
-                warning_msg = f"Logger: Invalid log style provided: {self._log_style}, defaulting to \"PRINT_AND_LOGFILE\""
+                warning_msg = f"Logger: Invalid log style provided: <EMPHASIZE_STRING_START_TAG>{self._log_style}</EMPHASIZE_STRING_END_TAG>, defaulting to <EMPHASIZE_STRING_START_TAG>PRINT_AND_LOGFILE</EMPHASIZE_STRING_END_TAG>"
                 warning_messages.append(warning_msg)
                 self._log_style = "PRINT_AND_LOGFILE"
 
         # Log all warning messages after both log level and log style are set.
         for warning_msg in warning_messages:
-            self.warning(warning_msg)
+            # Since instantiation itself is not complete, we log directly instead of letting messagePlatformHandler handle things.
+            self.warning(warning_msg, useDateStringUtils=useDateStringUtils)
 
 
 
@@ -112,7 +118,7 @@ class Logger:
 
         # Log style printing?
         if self._log_style == "PRINT_ONLY" or self._log_style == "PRINT_AND_LOGFILE":
-            print(fullLogText)
+            self._print_log_message(fullLogText)
 
 
     def error(self, errorToLog, customLogLevel=None):
@@ -137,7 +143,7 @@ class Logger:
 
         # Log style printing?
         if self._log_style == "PRINT_ONLY" or self._log_style == "PRINT_AND_LOGFILE":
-            print(fullLogText)
+            self._print_log_message(fullLogText)
 
     def warning(self, warningToLog, customLogLevel=None, useDateStringUtils=True):
         """
@@ -159,15 +165,13 @@ class Logger:
         # Log style logging?
         if self._log_style == "LOGFILE_ONLY" or self._log_style == "PRINT_AND_LOGFILE":
             self._log(self.globalErrorLogFile, fullLogText)
-            self._log(self.globalImportantLogFile, fullLogText)
             self._log(self.globalLogFile, fullLogText)
             self._log(self.dayBasedErrorLogFile, fullLogText)
-            self._log(self.dayBasedImportantLogFile, fullLogText)
             self._log(self.dayBasedLogFile, fullLogText)
 
         # Log style printing?
         if self._log_style == "PRINT_ONLY" or self._log_style == "PRINT_AND_LOGFILE":
-            print(fullLogText)
+            self._print_log_message(fullLogText)
         
 
     def information(self, informationToLog, customLogLevel=None):
@@ -194,7 +198,7 @@ class Logger:
 
             # Log style printing?
             if self._log_style == "PRINT_ONLY" or self._log_style == "PRINT_AND_LOGFILE":
-                print(fullLogText)
+                self._print_log_message(fullLogText)
 
     def verboseInfo(self, verboseInformationToLog, customLogLevel=None):
         """
@@ -220,7 +224,7 @@ class Logger:
 
             # Log style printing?
             if self._log_style == "PRINT_ONLY" or self._log_style == "PRINT_AND_LOGFILE":
-                print(fullLogText)
+                self._print_log_message(fullLogText)
 
     def _determine_log_level(self, customLogLevel, sourceMethodForLogMsg):
         """
@@ -238,18 +242,42 @@ class Logger:
             if customLogLevel in self._valid_log_levels:
                 log_level = customLogLevel
             else:
-                warning_msg = f"Logger.{sourceMethodForLogMsg}(): Invalid custom log level provided: {customLogLevel}, defaulting to global log level \"{self._global_log_level}\""
-                print(warning_msg)
-                self.warning(warning_msg)
+                warning_msg = f"Logger.{sourceMethodForLogMsg}(): Invalid custom log level provided: <EMPHASIZE_STRING_START_TAG>{customLogLevel}</EMPHASIZE_STRING_END_TAG>, defaulting to global log level <EMPHASIZE_STRING_START_TAG>{self._global_log_level}</EMPHASIZE_STRING_END_TAG>"
+                self._print_log_message(warning_msg)
+                self._messagePlatformHandler.handle_warning(warning_msg)
         return log_level
 
     def _log(self, file, fullLogText):
         """
         Write a string to a file.
 
+        Replaces Special tags to improve output.
+
         Args:
             file (str): File path.
             fullLogText (str): Text to log.
         """
+        # String replacements.
+        fullLogText=fullLogText.replace("<EMPHASIZE_STRING_START_TAG>", "\"")
+        fullLogText=fullLogText.replace("</EMPHASIZE_STRING_END_TAG>", "\"")
+        
+        # Write message.
         with open(file, 'a+') as f:
             f.write("\n" + fullLogText)
+
+
+    def _print_log_message(self, message_to_print:str):
+        """
+        Print message to cli.
+
+        Replaces Special tags to improve output.
+
+        Args:
+            message_to_print (str): The message to pring.
+        """
+        # String replacements.
+        message_to_print=message_to_print.replace("<EMPHASIZE_STRING_START_TAG>", "\"")
+        message_to_print=message_to_print.replace("</EMPHASIZE_STRING_END_TAG>", "\"")
+
+        # Print message.
+        print(message_to_print)

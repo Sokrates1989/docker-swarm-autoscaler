@@ -44,6 +44,9 @@ class DockerServiceScaler:
         autoscale_services = self._get_autoscale_services()
         for autoscale_service in autoscale_services:
 
+            # Add additional recipients for the service.
+            self._messagePlatformHandler.add_additional_recipients(autoscale_service)
+
             # Get individual metric's suggestions.
             cpu_scale_metrics = self._get_cpu_scale_metrics(autoscale_service)
             memory_scale_metrics = self._get_memory_scale_metrics(autoscale_service)
@@ -55,7 +58,9 @@ class DockerServiceScaler:
             # Rescale service based on scaling suggestion.
             self._handle_scaling_suggestion(autoscale_service, scaling_suggestion, allScalingMetrics)
 
-    
+        # Send all accumulated messages.
+        self._messagePlatformHandler.send_all_accumulated_messages()
+
 
     def _scale_service(self, autoscale_service, replicas, scaling_metrics=[]):
         """
@@ -74,11 +79,11 @@ class DockerServiceScaler:
 
             # Evaluate sclaing success and return state of scaling attempt.    
             if success_scaling:
-                successMsg = f"Successfully scaled service \"{autoscale_service.get_service_name()}\" to \"{replicas}\" replicas."
+                successMsg = f"Successfully scaled service <EMPHASIZE_STRING_START_TAG>{autoscale_service.get_service_name()}</EMPHASIZE_STRING_END_TAG> to <EMPHASIZE_STRING_START_TAG>{replicas}</EMPHASIZE_STRING_END_TAG> replicas."
                 self._messagePlatformHandler.handle_important_info(successMsg, autoscale_service, scaling_metrics)
             else:
                 # Print, log and return error message.
-                errorMsg=f"Unknown issue: Could not change service \"{autoscale_service.get_service_name()}\" to \"{replicas}\" replicas."
+                errorMsg=f"Unknown issue: Could not change service <EMPHASIZE_STRING_START_TAG>{autoscale_service.get_service_name()}</EMPHASIZE_STRING_END_TAG> to <EMPHASIZE_STRING_START_TAG>{replicas}</EMPHASIZE_STRING_END_TAG> replicas."
                 self._messagePlatformHandler.handle_error(errorMsg, autoscale_service)
         # Service not found error.
         except docker.errors.NotFound:
@@ -88,7 +93,7 @@ class DockerServiceScaler:
         # Other error.
         except docker.errors.APIError as e:
             # Print, log and return error message.
-            errorMsg=f"Error occurred while scaling service \"{autoscale_service.get_service_name()}\": {e}"
+            errorMsg=f"Error occurred while scaling service <EMPHASIZE_STRING_START_TAG>{autoscale_service.get_service_name()}</EMPHASIZE_STRING_END_TAG>: <EMPHASIZE_STRING_START_TAG>{e}</EMPHASIZE_STRING_END_TAG>"
             self._messagePlatformHandler.handle_error(errorMsg, autoscale_service)
 
 
@@ -126,21 +131,33 @@ class DockerServiceScaler:
                 # Check if the label "autoscale" is set to "true"
                 serviceLabelHandler = DockerServiceAutoscalerLabelHandler.DockerServiceAutoscalerLabelHandler(service)
                 if serviceLabelHandler.is_autoscale_service():
-                    isValidAutoscaleService, autoScaleServiceOrErrorMsgArray = serviceLabelHandler.get_autoscale_service()
+                    isValidAutoscaleService, autoScaleServiceOrErrorMsgArray, verficationWarnings = serviceLabelHandler.get_autoscale_service()
                     if isValidAutoscaleService:
                         autoscale_services.append(autoScaleServiceOrErrorMsgArray)
                     else:
                         # Prepare Error message for invalid autoscale labels.
-                        allVerficationErrorString = " ,  ".join(autoScaleServiceOrErrorMsgArray)
+                        allVerficationWarningString = " ,  ".join(autoScaleServiceOrErrorMsgArray)
                         service_name=service.attrs["Spec"]["Name"]
-                        invalidAutoScaleLabelMsg = f"Invalid autoscale labels for service {service_name}: "
-                        invalidAutoScaleLabelMsg += allVerficationErrorString
+                        invalidAutoScaleLabelMsg = f"Invalid autoscale labels for service <EMPHASIZE_STRING_START_TAG>{service_name}</EMPHASIZE_STRING_END_TAG>: "
+                        invalidAutoScaleLabelMsg += allVerficationWarningString
                         
                         # Log Error.
                         self._messagePlatformHandler.handle_error(invalidAutoScaleLabelMsg)
+
+                    # Are there any warnings?
+                    if len(verficationWarnings) > 0:
+                    # Prepare Warning message for autoscale labels.
+                        allVerficationWarningString = " ,  ".join(verficationWarnings)
+                        service_name=service.attrs["Spec"]["Name"]
+                        combinedWarningMessage = f"Warnings concerning autoscale labels for service <EMPHASIZE_STRING_START_TAG>{service_name}</EMPHASIZE_STRING_END_TAG>: "
+                        combinedWarningMessage += allVerficationWarningString
+
+                        # Log warning.
+                        self._messagePlatformHandler.handle_warning(combinedWarningMessage)
+
             return autoscale_services
         except docker.errors.APIError as e:
-            errorMsg=f"Error occurred while fetching autoscale services: {e}"
+            errorMsg=f"Error occurred while fetching autoscale services: <EMPHASIZE_STRING_START_TAG>{e}</EMPHASIZE_STRING_END_TAG>"
             self._messagePlatformHandler.handle_error(errorMsg)
             return autoscale_services
 
@@ -164,7 +181,7 @@ class DockerServiceScaler:
 
             # CPU Upscale.
             current_cpu_upscale_value=prometheusConnector.get_custom_cpu_metric(autoscale_service.get_service_name(), autoscale_service.get_cpu_upscale_time_duration())
-            verboseInfo = f"\"{autoscale_service.get_service_name()}\" current_cpu_upscale_value: \"{current_cpu_upscale_value}\"(\"{converterUtils.float_to_percentage(current_cpu_upscale_value)}\"), using time_duration:  \"{autoscale_service.get_cpu_upscale_time_duration()}\""
+            verboseInfo = f"<EMPHASIZE_STRING_START_TAG>{autoscale_service.get_service_name()}</EMPHASIZE_STRING_END_TAG> current_cpu_upscale_value: <EMPHASIZE_STRING_START_TAG>{current_cpu_upscale_value}</EMPHASIZE_STRING_END_TAG> (<EMPHASIZE_STRING_START_TAG>{converterUtils.float_to_percentage(current_cpu_upscale_value)}</EMPHASIZE_STRING_END_TAG>), using time_duration:  <EMPHASIZE_STRING_START_TAG>{autoscale_service.get_cpu_upscale_time_duration()}</EMPHASIZE_STRING_END_TAG>"
             self._messagePlatformHandler.handle_verbose_info(verboseInfo, autoscale_service)
 
             # Upscaling based on CPU?
@@ -172,15 +189,15 @@ class DockerServiceScaler:
                 cpu_scale_suggestion = ScalingSuggestion.SCALE_UP
             
             # Upscale suggestion verbose info.
-            verboseInfo = f"\"{autoscale_service.get_service_name()}\" cpu upscale threshold: \"{autoscale_service.get_cpu_upscale_threshold()}\"(\"{converterUtils.float_to_percentage(autoscale_service.get_cpu_upscale_threshold())}\"), cpu upscale suggestion: \"{cpu_scale_suggestion}\""
+            verboseInfo = f"<EMPHASIZE_STRING_START_TAG>{autoscale_service.get_service_name()}</EMPHASIZE_STRING_END_TAG> cpu upscale threshold: <EMPHASIZE_STRING_START_TAG>{autoscale_service.get_cpu_upscale_threshold()}</EMPHASIZE_STRING_END_TAG> (<EMPHASIZE_STRING_START_TAG>{converterUtils.float_to_percentage(autoscale_service.get_cpu_upscale_threshold())}</EMPHASIZE_STRING_END_TAG>), cpu upscale suggestion: <EMPHASIZE_STRING_START_TAG>{cpu_scale_suggestion}</EMPHASIZE_STRING_END_TAG>"
             self._messagePlatformHandler.handle_verbose_info(verboseInfo, autoscale_service)
 
             # CPU Downscale.
             current_cpu_downscale_value=prometheusConnector.get_custom_cpu_metric(autoscale_service.get_service_name(), autoscale_service.get_cpu_downscale_time_duration())
-            verboseInfo = f"\"{autoscale_service.get_service_name()}\" current_cpu_downscale_value: \"{current_cpu_downscale_value}\"(\"{converterUtils.float_to_percentage(current_cpu_downscale_value)}\"), using time_duration:  \"{autoscale_service.get_cpu_downscale_time_duration()}\""
+            verboseInfo = f"<EMPHASIZE_STRING_START_TAG>{autoscale_service.get_service_name()}</EMPHASIZE_STRING_END_TAG> current_cpu_downscale_value: <EMPHASIZE_STRING_START_TAG>{current_cpu_downscale_value}</EMPHASIZE_STRING_END_TAG> (<EMPHASIZE_STRING_START_TAG>{converterUtils.float_to_percentage(current_cpu_downscale_value)}</EMPHASIZE_STRING_END_TAG>), using time_duration:  <EMPHASIZE_STRING_START_TAG>{autoscale_service.get_cpu_downscale_time_duration()}</EMPHASIZE_STRING_END_TAG>"
             self._messagePlatformHandler.handle_verbose_info(verboseInfo, autoscale_service)
 
-            verboseInfo = f"\"{autoscale_service.get_service_name()}\" cpu downscale threshold: \"{autoscale_service.get_cpu_downscale_threshold()}\"(\"{converterUtils.float_to_percentage(autoscale_service.get_cpu_downscale_threshold())}\")"
+            verboseInfo = f"<EMPHASIZE_STRING_START_TAG>{autoscale_service.get_service_name()}</EMPHASIZE_STRING_END_TAG> cpu downscale threshold: <EMPHASIZE_STRING_START_TAG>{autoscale_service.get_cpu_downscale_threshold()}</EMPHASIZE_STRING_END_TAG> (<EMPHASIZE_STRING_START_TAG>{converterUtils.float_to_percentage(autoscale_service.get_cpu_downscale_threshold())}</EMPHASIZE_STRING_END_TAG>)"
             self._messagePlatformHandler.handle_verbose_info(verboseInfo, autoscale_service)
             
             # Downscaling based on CPU?
@@ -189,7 +206,7 @@ class DockerServiceScaler:
                 if cpu_scale_suggestion == ScalingSuggestion.KEEP_REPLICAS:
                     cpu_scale_suggestion = ScalingSuggestion.SCALE_DOWN
                     # Downscale verbse info.
-                    verboseInfo = f"\"{autoscale_service.get_service_name()}\" cpu downscale suggestion: \"{cpu_scale_suggestion}\""
+                    verboseInfo = f"<EMPHASIZE_STRING_START_TAG>{autoscale_service.get_service_name()}</EMPHASIZE_STRING_END_TAG> cpu downscale suggestion: <EMPHASIZE_STRING_START_TAG>{cpu_scale_suggestion}</EMPHASIZE_STRING_END_TAG>"
                     self._messagePlatformHandler.handle_verbose_info(verboseInfo, autoscale_service)
                 else:
                     # Conflict resolution.
@@ -203,11 +220,11 @@ class DockerServiceScaler:
                         cpu_scale_suggestion = ScalingSuggestion.KEEP_REPLICAS
                     
                     # Conflict resolution verbse info.
-                    verboseInfo = f"\"{autoscale_service.get_service_name()}\" ScalingConflictResolution: \"{scaling_conflict_resolution}\""
+                    verboseInfo = f"<EMPHASIZE_STRING_START_TAG>{autoscale_service.get_service_name()}</EMPHASIZE_STRING_END_TAG> ScalingConflictResolution: <EMPHASIZE_STRING_START_TAG>{scaling_conflict_resolution}</EMPHASIZE_STRING_END_TAG>"
                     self._messagePlatformHandler.handle_verbose_info(verboseInfo, autoscale_service)
 
-            # Final cpu dcision verbose info.
-            verboseInfo = f"\"{autoscale_service.get_service_name()}\" Final CPU Scaling Suggestion: \"{cpu_scale_suggestion}\""
+            # Final cpu decision verbose info.
+            verboseInfo = f"<EMPHASIZE_STRING_START_TAG>{autoscale_service.get_service_name()}</EMPHASIZE_STRING_END_TAG> Final CPU Scaling Suggestion: <EMPHASIZE_STRING_START_TAG>{cpu_scale_suggestion}</EMPHASIZE_STRING_END_TAG>"
             self._messagePlatformHandler.handle_verbose_info(verboseInfo, autoscale_service)
 
             # Setting values to return class.
@@ -220,7 +237,7 @@ class DockerServiceScaler:
             
         else:
             # Verbose info cpu based scaling not enabled.
-            verboseInfo = f"\"{autoscale_service.get_service_name()}\" CPU based scaling not enabled"
+            verboseInfo = f"<EMPHASIZE_STRING_START_TAG>{autoscale_service.get_service_name()}</EMPHASIZE_STRING_END_TAG> CPU based scaling not enabled"
             self._messagePlatformHandler.handle_verbose_info(verboseInfo, autoscale_service)
         
         # Return scaling suggestion.
@@ -246,7 +263,7 @@ class DockerServiceScaler:
 
             # Get current value.
             current_memory_value=prometheusConnector.get_custom_memory_metric(autoscale_service.get_service_name())
-            verboseInfo = f"\"{autoscale_service.get_service_name()}\" current_memory_value: \"{current_memory_value}\"(\"{converterUtils.bytes_to_human_readable_storage(current_memory_value)}\")"
+            verboseInfo = f"<EMPHASIZE_STRING_START_TAG>{autoscale_service.get_service_name()}</EMPHASIZE_STRING_END_TAG> current_memory_value: <EMPHASIZE_STRING_START_TAG>{current_memory_value}</EMPHASIZE_STRING_END_TAG> (<EMPHASIZE_STRING_START_TAG>{converterUtils.bytes_to_human_readable_storage(current_memory_value)}</EMPHASIZE_STRING_END_TAG>)"
             self._messagePlatformHandler.handle_verbose_info(verboseInfo, autoscale_service)
 
             # Upscaling based on Memory?
@@ -254,11 +271,11 @@ class DockerServiceScaler:
                 memory_scale_suggestion = ScalingSuggestion.SCALE_UP
 
             # Upscale suggestion verbose info.
-            verboseInfo = f"\"{autoscale_service.get_service_name()}\" memory upscale threshold: \"{autoscale_service.get_memory_upscale_threshold()}\"(\"{converterUtils.bytes_to_human_readable_storage(autoscale_service.get_memory_upscale_threshold())}\"), memory upscale suggestion: \"{memory_scale_suggestion}\""
+            verboseInfo = f"<EMPHASIZE_STRING_START_TAG>{autoscale_service.get_service_name()}</EMPHASIZE_STRING_END_TAG> memory upscale threshold: <EMPHASIZE_STRING_START_TAG>{autoscale_service.get_memory_upscale_threshold()}</EMPHASIZE_STRING_END_TAG> (<EMPHASIZE_STRING_START_TAG>{converterUtils.bytes_to_human_readable_storage(autoscale_service.get_memory_upscale_threshold())}</EMPHASIZE_STRING_END_TAG>), memory upscale suggestion: <EMPHASIZE_STRING_START_TAG>{memory_scale_suggestion}</EMPHASIZE_STRING_END_TAG>"
             self._messagePlatformHandler.handle_verbose_info(verboseInfo, autoscale_service)
 
             # Downscale threshold verbose info.
-            verboseInfo = f"\"{autoscale_service.get_service_name()}\" memory downscale threshold: \"{autoscale_service.get_memory_downscale_threshold()}\"(\"{converterUtils.bytes_to_human_readable_storage(autoscale_service.get_memory_downscale_threshold())}\")"
+            verboseInfo = f"<EMPHASIZE_STRING_START_TAG>{autoscale_service.get_service_name()}</EMPHASIZE_STRING_END_TAG> memory downscale threshold: <EMPHASIZE_STRING_START_TAG>{autoscale_service.get_memory_downscale_threshold()}</EMPHASIZE_STRING_END_TAG> (<EMPHASIZE_STRING_START_TAG>{converterUtils.bytes_to_human_readable_storage(autoscale_service.get_memory_downscale_threshold())}</EMPHASIZE_STRING_END_TAG>)"
             self._messagePlatformHandler.handle_verbose_info(verboseInfo, autoscale_service)
             
             # Downscaling based on Memory?
@@ -267,7 +284,7 @@ class DockerServiceScaler:
                     memory_scale_suggestion = ScalingSuggestion.SCALE_DOWN
 
                     # Downscale verbse info.
-                    verboseInfo = f"\"{autoscale_service.get_service_name()}\" memory downscale suggestion: \"{memory_scale_suggestion}\""
+                    verboseInfo = f"<EMPHASIZE_STRING_START_TAG>{autoscale_service.get_service_name()}</EMPHASIZE_STRING_END_TAG> memory downscale suggestion: <EMPHASIZE_STRING_START_TAG>{memory_scale_suggestion}</EMPHASIZE_STRING_END_TAG>"
                     self._messagePlatformHandler.handle_verbose_info(verboseInfo, autoscale_service)
                 else:
                     # Conflict resolution.
@@ -281,11 +298,11 @@ class DockerServiceScaler:
                         memory_scale_suggestion = ScalingSuggestion.KEEP_REPLICAS
                     
                     # Conflict resolution verbse info.
-                    verboseInfo = f"\"{autoscale_service.get_service_name()}\" ScalingConflictResolution: \"{scaling_conflict_resolution}\""
+                    verboseInfo = f"<EMPHASIZE_STRING_START_TAG>{autoscale_service.get_service_name()}</EMPHASIZE_STRING_END_TAG> ScalingConflictResolution: <EMPHASIZE_STRING_START_TAG>{scaling_conflict_resolution}</EMPHASIZE_STRING_END_TAG>"
                     self._messagePlatformHandler.handle_verbose_info(verboseInfo, autoscale_service)
 
             # Final memory decision verbose info.
-            verboseInfo = f"\"{autoscale_service.get_service_name()}\" Final Memory Scaling Suggestion: \"{memory_scale_suggestion}\""
+            verboseInfo = f"<EMPHASIZE_STRING_START_TAG>{autoscale_service.get_service_name()}</EMPHASIZE_STRING_END_TAG> Final Memory Scaling Suggestion: <EMPHASIZE_STRING_START_TAG>{memory_scale_suggestion}</EMPHASIZE_STRING_END_TAG>"
             self._messagePlatformHandler.handle_verbose_info(verboseInfo, autoscale_service)
 
             # Setting values to return class.
@@ -297,7 +314,7 @@ class DockerServiceScaler:
             memoryScalingMetrics.set_scaling_suggestion(memory_scale_suggestion)
         else:
             # Verbose info memory based scaling not enabled.
-            verboseInfo = f"\"{autoscale_service.get_service_name()}\" Memory based scaling not enabled"
+            verboseInfo = f"<EMPHASIZE_STRING_START_TAG>{autoscale_service.get_service_name()}</EMPHASIZE_STRING_END_TAG> Memory based scaling not enabled"
             self._messagePlatformHandler.handle_verbose_info(verboseInfo, autoscale_service)
         
         # Return scaling suggestion.
@@ -316,21 +333,21 @@ class DockerServiceScaler:
         scaling_conflict_resolution=autoscale_service.get_scaling_conflict_resolution()
 
         # Logging verbose information about final scaling suggestion.
-        verbose_info = f"Calculating final scaling suggestion for service: \"{autoscale_service.get_service_name()}\", CPU Suggestion: \"{cpu_scale_suggestion}\", Memory Suggestion: \"{memory_scale_suggestion}\", Conflict Resolution: \"{scaling_conflict_resolution}\""
+        verbose_info = f"Calculating final scaling suggestion for service: <EMPHASIZE_STRING_START_TAG>{autoscale_service.get_service_name()}</EMPHASIZE_STRING_END_TAG>, CPU Suggestion: <EMPHASIZE_STRING_START_TAG>{cpu_scale_suggestion}</EMPHASIZE_STRING_END_TAG>, Memory Suggestion: <EMPHASIZE_STRING_START_TAG>{memory_scale_suggestion}</EMPHASIZE_STRING_END_TAG>, Conflict Resolution: <EMPHASIZE_STRING_START_TAG>{scaling_conflict_resolution}</EMPHASIZE_STRING_END_TAG>"
         self._messagePlatformHandler.handle_verbose_info(verbose_info, autoscale_service)
 
         # Memory and CPU enabled.
         if autoscale_service.is_scaling_based_on_cpu_enabled() and autoscale_service.is_scaling_based_on_memory_enabled():
 
             # Logging verbose information about final scaling suggestion.
-            verbose_info = f"Memory and cpu autoscaling enabled for \"{autoscale_service.get_service_name()}\""
+            verbose_info = f"Memory and cpu autoscaling enabled for <EMPHASIZE_STRING_START_TAG>{autoscale_service.get_service_name()}</EMPHASIZE_STRING_END_TAG>"
             self._messagePlatformHandler.handle_verbose_info(verbose_info, autoscale_service)
 
             if cpu_scale_suggestion == memory_scale_suggestion:
                 scaling_suggestion = cpu_scale_suggestion
 
                 # Logging verbose information about final scaling suggestion.
-                verbose_info = f"All suggestions are the same for \"{autoscale_service.get_service_name()}\": using \"{scaling_suggestion}\" as final suggestion"
+                verbose_info = f"All suggestions are the same for <EMPHASIZE_STRING_START_TAG>{autoscale_service.get_service_name()}</EMPHASIZE_STRING_END_TAG>: using <EMPHASIZE_STRING_START_TAG>{scaling_suggestion}</EMPHASIZE_STRING_END_TAG> as final suggestion"
                 self._messagePlatformHandler.handle_verbose_info(verbose_info, autoscale_service)
             else:
                 # Conflict resolution.
@@ -355,7 +372,7 @@ class DockerServiceScaler:
 
                     
                 # Logging verbose information about final scaling suggestion.
-                verbose_info = f"Result of conflict resolution for \"{autoscale_service.get_service_name()}\": using \"{scaling_suggestion}\" as final suggestion"
+                verbose_info = f"Result of conflict resolution for <EMPHASIZE_STRING_START_TAG>{autoscale_service.get_service_name()}</EMPHASIZE_STRING_END_TAG>: using <EMPHASIZE_STRING_START_TAG>{scaling_suggestion}</EMPHASIZE_STRING_END_TAG> as final suggestion"
                 self._messagePlatformHandler.handle_verbose_info(verbose_info, autoscale_service)
 
         # Just CPU enabled.
@@ -363,7 +380,7 @@ class DockerServiceScaler:
                 scaling_suggestion = cpu_scale_suggestion
                 
                 # Logging verbose information about final scaling suggestion.
-                verbose_info = f"Only cpu autoscaling enabled for \"{autoscale_service.get_service_name()}\", Using cpu suggestion: \"{scaling_suggestion}\" as final suggestion"
+                verbose_info = f"Only cpu autoscaling enabled for <EMPHASIZE_STRING_START_TAG>{autoscale_service.get_service_name()}</EMPHASIZE_STRING_END_TAG>, Using cpu suggestion: <EMPHASIZE_STRING_START_TAG>{scaling_suggestion}</EMPHASIZE_STRING_END_TAG> as final suggestion"
                 self._messagePlatformHandler.handle_verbose_info(verbose_info, autoscale_service)
                 
         # Just Memory enabled.
@@ -371,7 +388,7 @@ class DockerServiceScaler:
                 scaling_suggestion = memory_scale_suggestion
                 
                 # Logging verbose information about final scaling suggestion.
-                verbose_info = f"Only memory autoscaling enabled for \"{autoscale_service.get_service_name()}\", Using memory suggestion: \"{scaling_suggestion}\" as final suggestion"
+                verbose_info = f"Only memory autoscaling enabled for <EMPHASIZE_STRING_START_TAG>{autoscale_service.get_service_name()}</EMPHASIZE_STRING_END_TAG>, Using memory suggestion: <EMPHASIZE_STRING_START_TAG>{scaling_suggestion}</EMPHASIZE_STRING_END_TAG> as final suggestion"
                 self._messagePlatformHandler.handle_verbose_info(verbose_info, autoscale_service)
         
         # Return scaling suggestion.
@@ -387,13 +404,13 @@ class DockerServiceScaler:
         """
         # Current amount of replicas already running.
         current_amount_replicas = self._get_current_replicas(autoscale_service.get_service_name())
-        verboseInfo = f"\"{autoscale_service.get_service_name()}\" Before rescaling amount of replicas: \"{current_amount_replicas}\""
+        verboseInfo = f"<EMPHASIZE_STRING_START_TAG>{autoscale_service.get_service_name()}</EMPHASIZE_STRING_END_TAG> Before rescaling amount of replicas: <EMPHASIZE_STRING_START_TAG>{current_amount_replicas}</EMPHASIZE_STRING_END_TAG>"
         self._messagePlatformHandler.handle_verbose_info(verboseInfo, autoscale_service)
 
         # Min and max amount of replicas.
         min_replicas = autoscale_service.get_minimum_replicas()
         max_replicas = autoscale_service.get_maximum_replicas()
-        verboseInfo = f"\"{autoscale_service.get_service_name()}\" Minimum replicas: \"{min_replicas}\", Maximum replicas: \"{max_replicas}\""
+        verboseInfo = f"<EMPHASIZE_STRING_START_TAG>{autoscale_service.get_service_name()}</EMPHASIZE_STRING_END_TAG> Minimum replicas: <EMPHASIZE_STRING_START_TAG>{min_replicas}</EMPHASIZE_STRING_END_TAG>, Maximum replicas: <EMPHASIZE_STRING_START_TAG>{max_replicas}</EMPHASIZE_STRING_END_TAG>"
         self._messagePlatformHandler.handle_verbose_info(verboseInfo, autoscale_service)
 
         # Unchecked incrementation or decrementation of service.
@@ -402,7 +419,7 @@ class DockerServiceScaler:
             new_amount_replicas = current_amount_replicas - 1
         elif scaling_suggestion == ScalingSuggestion.SCALE_UP:
             new_amount_replicas = current_amount_replicas + 1
-        verboseInfo = f"\"{autoscale_service.get_service_name()}\" Unchecked new replicas based on scaling suggestion: \"{new_amount_replicas}\""
+        verboseInfo = f"<EMPHASIZE_STRING_START_TAG>{autoscale_service.get_service_name()}</EMPHASIZE_STRING_END_TAG> Unchecked new replicas based on scaling suggestion: <EMPHASIZE_STRING_START_TAG>{new_amount_replicas}</EMPHASIZE_STRING_END_TAG>"
         self._messagePlatformHandler.handle_verbose_info(verboseInfo, autoscale_service)
         
         # Ensure scaling is within limits.
@@ -410,7 +427,7 @@ class DockerServiceScaler:
             new_amount_replicas = min_replicas
         if new_amount_replicas > max_replicas:
             new_amount_replicas = max_replicas
-        verboseInfo = f"\"{autoscale_service.get_service_name()}\" New replicas after adhering to min and max replica thresholds: \"{new_amount_replicas}\""
+        verboseInfo = f"<EMPHASIZE_STRING_START_TAG>{autoscale_service.get_service_name()}</EMPHASIZE_STRING_END_TAG> New replicas after adhering to min and max replica thresholds: <EMPHASIZE_STRING_START_TAG>{new_amount_replicas}</EMPHASIZE_STRING_END_TAG>"
         self._messagePlatformHandler.handle_verbose_info(verboseInfo, autoscale_service)
 
         # Does amount of replicas have to be changed?
@@ -418,5 +435,5 @@ class DockerServiceScaler:
             self._scale_service(autoscale_service, new_amount_replicas, scaling_metrics)
         else:
             # Info about keeping replicas.
-            keeping_replica_msg = f"Keeping replicas of service \"{autoscale_service.get_service_name()}\" at \"{current_amount_replicas}\""
+            keeping_replica_msg = f"Keeping replicas of service <EMPHASIZE_STRING_START_TAG>{autoscale_service.get_service_name()}</EMPHASIZE_STRING_END_TAG> at <EMPHASIZE_STRING_START_TAG>{current_amount_replicas}</EMPHASIZE_STRING_END_TAG>"
             self._messagePlatformHandler.handle_information(keeping_replica_msg, autoscale_service)

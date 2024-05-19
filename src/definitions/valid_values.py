@@ -17,6 +17,13 @@ class LogLevel(Enum):
     VERBOSE = "VERBOSE"
     IMPORTANT_ONLY = "IMPORTANT_ONLY"
 
+class MessageLevel(Enum):
+    IMPORTANT = "IMPORTANT"
+    ERROR = "ERROR"
+    WARNING = "WARNING"
+    INFO = "INFO"
+    VERBOSE = "VERBOSE"
+
 class ScalingMetricName(Enum):
     CPU = "CPU"
     MEMORY = "MEMORY"
@@ -25,4 +32,7 @@ class MessagingPlatforms(Enum):
     LOGGING = "LOGGING"
     EMAIL = "EMAIL"
     TELEGRAM = "TELEGRAM"
+
+
+VALID_SMTP_PORTS = (25, 587, 465)
 

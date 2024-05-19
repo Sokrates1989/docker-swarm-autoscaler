@@ -3,6 +3,7 @@
 import os
 import sys
 sys.path.insert(1, os.path.join(os.path.dirname(__file__), "utils"))
+sys.path.insert(1, os.path.join(os.path.dirname(__file__), "utils", "messaging"))
 sys.path.insert(1, os.path.join(os.path.dirname(__file__), "models"))
 sys.path.insert(1, os.path.join(os.path.dirname(__file__), "definitions"))
 

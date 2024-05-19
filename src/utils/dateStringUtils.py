@@ -52,14 +52,14 @@ def getTimezone():
         timezone = os.getenv("TIMEZONE")
     except Exception as e:
         # Log a warning if timezone could not be retrieved from environment.
-        warning_msg = f"DateStringUtils: Could not get TIMEZONE from environment: {str(e)}"
+        warning_msg = f"DateStringUtils: Could not get TIMEZONE from environment: <EMPHASIZE_STRING_START_TAG>{str(e)}</EMPHASIZE_STRING_END_TAG>"
         messagePlatformHandler = MessagePlatformHandler.MessagePlatformHandler(useDateStringUtils=False)
         messagePlatformHandler.handle_warning(warning_msg, useDateStringUtils=False)
     finally:
         # Check if the provided timezone is valid.
         if timezone not in pytz.all_timezones:
             # Log a warning if the timezone is invalid and default to UTC.
-            warning_msg = f"DateStringUtils: Invalid timezone provided: {timezone}, defaulting to Etc/UTC"
+            warning_msg = f"DateStringUtils: Invalid timezone provided: <EMPHASIZE_STRING_START_TAG>{timezone}</EMPHASIZE_STRING_END_TAG>, defaulting to Etc/UTC"
             messagePlatformHandler = MessagePlatformHandler.MessagePlatformHandler(useDateStringUtils=False)
             messagePlatformHandler.handle_warning(warning_msg, useDateStringUtils=False)
             timezone = "Etc/UTC"
