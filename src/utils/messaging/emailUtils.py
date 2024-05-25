@@ -81,14 +81,18 @@ class EmailUtils:
                 EMAIL_SENDER_PASSWORD_FILE = os.getenv("EMAIL_SENDER_PASSWORD_FILE")
                 with open(f"{EMAIL_SENDER_PASSWORD_FILE}", "r") as email_sender_password_file:
                     self._sender["password"] = email_sender_password_file.read().strip()
-                    verbose_info_messages.append(f"EmailUtils: Email sender password taken from secret file.")
+                    
+                    # Log that bot token was taken from secret file, if it holds potentially valid information.
+                    if self._sender["password"].lower() != "none":
+                        verbose_info_messages.append(f"EmailUtils: Email sender password taken from secret file.")
+                    
             except:
                 pass
             finally:
-                # If there is no SECRET_FILE.
-                if not "password" in self._sender:
+                # In case of an error or the secret is not set.
+                if not "password" in self._sender or self._sender["password"].lower() == "none":
                     self._sender["password"] = os.getenv('EMAIL_SENDER_PASSWORD').strip().strip("\"")
-                    verbose_info_messages.append(f"EmailUtils: Email sender password taken from .env.")
+                    warning_messages.append(f"EmailUtils: Email sender password taken from .env. Please use secret instead")
             if not "password" in self._sender or not self._sender["password"]:
                 warning_messages.append(f"EmailUtils: No Password for Email sender provided. Disabling Email status messages.")
                 self._email_enabled = False
@@ -144,18 +148,18 @@ class EmailUtils:
 
             # Append warnings.
             for warning in important_recipients_warnings:
-                warning_messages.append(f"Environment Variable <EMPHASIZE_STRING_START_TAG>EMAIL_RECIPIENTS_IMPORTANT</EMPHASIZE_STRING_END_TAG> <EMPHASIZE_STRING_START_TAG>{os.getenv('EMAIL_RECIPIENTS_IMPORTANT')}</EMPHASIZE_STRING_END_TAG> partially invalid: {warning}")
+                warning_messages.append(f"EmailUtils: Environment Variable <EMPHASIZE_STRING_START_TAG>EMAIL_RECIPIENTS_IMPORTANT</EMPHASIZE_STRING_END_TAG> <EMPHASIZE_STRING_START_TAG>{os.getenv('EMAIL_RECIPIENTS_IMPORTANT')}</EMPHASIZE_STRING_END_TAG> partially invalid: {warning}")
             for warning in information_recipients_warnings:
-                warning_messages.append(f"Environment Variable <EMPHASIZE_STRING_START_TAG>EMAIL_RECIPIENTS_INFORMATION</EMPHASIZE_STRING_END_TAG> <EMPHASIZE_STRING_START_TAG>{os.getenv('EMAIL_RECIPIENTS_INFORMATION')}</EMPHASIZE_STRING_END_TAG> partially invalid: {warning}")
+                warning_messages.append(f"EmailUtils: Environment Variable <EMPHASIZE_STRING_START_TAG>EMAIL_RECIPIENTS_INFORMATION</EMPHASIZE_STRING_END_TAG> <EMPHASIZE_STRING_START_TAG>{os.getenv('EMAIL_RECIPIENTS_INFORMATION')}</EMPHASIZE_STRING_END_TAG> partially invalid: {warning}")
             for warning in verbose_recipients_warnings:
-                warning_messages.append(f"Environment Variable <EMPHASIZE_STRING_START_TAG>EMAIL_RECIPIENTS_VERBOSE</EMPHASIZE_STRING_END_TAG> <EMPHASIZE_STRING_START_TAG>{os.getenv('EMAIL_RECIPIENTS_VERBOSE')}</EMPHASIZE_STRING_END_TAG> partially invalid: {warning}")
+                warning_messages.append(f"EmailUtils: Environment Variable <EMPHASIZE_STRING_START_TAG>EMAIL_RECIPIENTS_VERBOSE</EMPHASIZE_STRING_END_TAG> <EMPHASIZE_STRING_START_TAG>{os.getenv('EMAIL_RECIPIENTS_VERBOSE')}</EMPHASIZE_STRING_END_TAG> partially invalid: {warning}")
 
             
         # Test sender login.
         if self._email_enabled:
             smpt_login_successful=self._test_smtp_login(self._sender)
             if smpt_login_successful != True:
-                warning_messages.append(f"EmailUtils smtp login test failed: {smpt_login_successful}. Disabling Email status messages.")
+                warning_messages.append(f"EmailUtils: smtp login test failed: {smpt_login_successful}. Disabling Email status messages.")
                 self._email_enabled = False
 
                 
@@ -163,15 +167,12 @@ class EmailUtils:
         ### Handle warnings, information and verbose info after finishing instantiation as far as possible ###
         # Warnings.
         for message in warning_messages:
-            self.handle_warning(message) # Since instantiation itself is not fully complete.
             self._messagePlatformHandler.handle_warning(message)
         # Information.
         for message in info_messages:
-            self.handle_information(message) # Since instantiation itself is not fully complete.
             self._messagePlatformHandler.handle_information(message)
         # Verbose infos.
         for message in verbose_info_messages:
-            self.handle_verbose_info(message) # Since instantiation itself is not fully complete.
             self._messagePlatformHandler.handle_verbose_info(message)
 
 
@@ -495,7 +496,8 @@ class EmailUtils:
             subject = "Autoscaler info: "
             highest_message_level = MessageLevel.VERBOSE
             # What services is the recipient subscribed to?
-            for service_name in recipients[recipient_mail]:
+            def process_service_messages(service_name):
+                nonlocal send_mail, msg_to_send, subject, highest_message_level
 
                 # Determine if there is any message of the service for the recipient.
                 service_message = ""
@@ -506,7 +508,7 @@ class EmailUtils:
                     service_message += f"<p><u>Important</u><br/>"
                     # Add each message from the array.
                     for message in self._messages_to_send[service_name]["important"]:
-                        service_message += f"- {message}\n"
+                        service_message += f"‼️ {message}\n"
                     service_message += "</p>"
                     highest_message_level = self._determine_highest_message_level(highest_message_level, MessageLevel.IMPORTANT)
                     service_message_levels.append(MessageLevel.IMPORTANT)
@@ -516,7 +518,7 @@ class EmailUtils:
                     service_message += f"<p><u>Errors</u><br/>"
                     # Add each message from the array.
                     for message in self._messages_to_send[service_name]["error"]:
-                        service_message += f"- {message}\n"
+                        service_message += f"🛑 {message}\n"
                     service_message += "</p>"
                     highest_message_level = self._determine_highest_message_level(highest_message_level, MessageLevel.ERROR)
                     service_message_levels.append(MessageLevel.ERROR)
@@ -526,7 +528,7 @@ class EmailUtils:
                     service_message += f"<p><u>Warnings</u><br/>"
                     # Add each message from the array.
                     for message in self._messages_to_send[service_name]["warning"]:
-                        service_message += f"- {message}\n"
+                        service_message += f"⚠️ {message}\n"
                     service_message += "</p>"
                     highest_message_level = self._determine_highest_message_level(highest_message_level, MessageLevel.WARNING)
                     service_message_levels.append(MessageLevel.WARNING)
@@ -540,7 +542,7 @@ class EmailUtils:
                         service_message += f"<p><u>Information</u><br/>"
                         # Add each message from the array.
                         for message in self._messages_to_send[service_name]["information"]:
-                            service_message += f"- {message}\n"
+                            service_message += f"ℹ {message}\n"
                         service_message += "</p>"
                         highest_message_level = self._determine_highest_message_level(highest_message_level, MessageLevel.INFO)
                         service_message_levels.append(MessageLevel.INFO)
@@ -553,7 +555,7 @@ class EmailUtils:
                         service_message += f"<p><u>Verbose</u><br/>"
                         # Add each message from the array.
                         for message in self._messages_to_send[service_name]["verbose"]:
-                            service_message += f"- {message}\n"
+                            service_message += f"🔍 {message}\n"
                         service_message += "</p>"
                         highest_message_level = self._determine_highest_message_level(highest_message_level, MessageLevel.VERBOSE)
                         service_message_levels.append(MessageLevel.VERBOSE)
@@ -570,7 +572,7 @@ class EmailUtils:
                     
                     ## Heading ##
                     # Add service log levels to heading.
-                    service_log_level_string=", ".join([str(message_level.value).lower() for message_level in service_message_levels])
+                    service_log_level_string=", ".join([message_level.level.lower() for message_level in service_message_levels])
                     service_log_level_string = f" ({service_log_level_string})"
                     # Add HTML to heading.
                     if service_name == self._unknownServiceIndicator:
@@ -580,6 +582,15 @@ class EmailUtils:
 
                     # Append service message.
                     msg_to_send += service_message + "\n"
+
+            # First process the self._unknownServiceIndicator service if subscribed.
+            if self._unknownServiceIndicator in recipients[recipient_mail]:
+                process_service_messages(self._unknownServiceIndicator)
+
+            # Process other services.
+            for service_name in recipients[recipient_mail]:
+                if service_name != self._unknownServiceIndicator:
+                    process_service_messages(service_name)
             
             # Only send mail, if there is any message.
             if send_mail:
@@ -589,15 +600,15 @@ class EmailUtils:
 
                 # Change subject to also reflect log level in email.
                 if highest_message_level == MessageLevel.IMPORTANT:
-                    subject = subject.replace("Autoscaler info: ", "AUTOSCALER IMPORTANT INFO: ")
+                    subject = subject.replace("Autoscaler info: ", "‼️ AUTOSCALER IMPORTANT INFO: ")
                 elif highest_message_level == MessageLevel.ERROR:
-                    subject = subject.replace("Autoscaler info: ", "Autoscaler ERROR: ")
+                    subject = subject.replace("Autoscaler info: ", "🛑 Autoscaler ERROR: ")
                 elif highest_message_level == MessageLevel.WARNING:
-                    subject = subject.replace("Autoscaler info: ", "Autoscaler WARNING: ")
+                    subject = subject.replace("Autoscaler info: ", "⚠️ Autoscaler WARNING: ")
                 elif highest_message_level == MessageLevel.INFO:
-                    subject = subject.replace("Autoscaler info: ", "Autoscaler info: ")
+                    subject = subject.replace("Autoscaler info: ", "ℹ Autoscaler info: ")
                 elif highest_message_level == MessageLevel.VERBOSE:
-                    subject = subject.replace("Autoscaler info: ", "Autoscaler verbose info: ")
+                    subject = subject.replace("Autoscaler info: ", "🔍 Autoscaler verbose info: ")
 
                 # Finally send the email.
                 self._send_email(self._sender, recipient_mail, subject, msg_to_send)

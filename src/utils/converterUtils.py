@@ -127,3 +127,43 @@ def get_email_array_from_emails_list_string(emails_list_string):
         # If any unexpected error occurs, add a warning with details.
         warnings.append(f"Error extracting emails from string <EMPHASIZE_STRING_START_TAG>{emails_list_string}</EMPHASIZE_STRING_END_TAG>: {str(e)}")
         return valid_emails, warnings
+
+
+
+def get_telegram_array_from_telegram_chats_list_string(telegram_chats_list_string):
+    """
+    Extracts an array of telegram chat ids from a comma-separated string of telegram chat ids.
+
+    Args:
+    - telegram_chats_list_string (str): A comma-separated string containing telegram chat ids.
+
+    Returns:
+    A tuple consisting of:
+    - valid_telegram_chats (list): A list of valid telegram chat ids extracted from the input string.
+    - warnings (list): A list of warnings generated during the process, such as invalid telegram chat ids.
+    """
+    warnings = []  # A list to store any warnings encountered during processing.
+    valid_telegram_chats = []  # A list to store valid telegram chat ids.
+
+    try:
+        # If the input string is empty or 'None', return empty lists.
+        if not telegram_chats_list_string or telegram_chats_list_string.lower() == "none":
+            return valid_telegram_chats, warnings
+
+        # Split the string by commas and strip any whitespace from each chat id.
+        telegram_array = [telegram.strip() for telegram in telegram_chats_list_string.split(',')]
+
+        # Validate each telegram in the array
+        for telegram_chat_id in telegram_array:
+            if validationUtils.is_telegram_chat_id_valid(telegram_chat_id):
+                valid_telegram_chats.append(telegram_chat_id)
+            else:
+                # If an telegram is invalid, add a warning to the list.
+                warnings.append(f"Invalid Telegram Chat ID: <EMPHASIZE_STRING_START_TAG>{telegram_chat_id}</EMPHASIZE_STRING_END_TAG> was not added to the recipients.")
+
+        return valid_telegram_chats, warnings
+        
+    except Exception as e:
+        # If any unexpected error occurs, add a warning with details.
+        warnings.append(f"Error extracting telegram chat ids from string <EMPHASIZE_STRING_START_TAG>{telegram_chats_list_string}</EMPHASIZE_STRING_END_TAG>: {str(e)}")
+        return valid_telegram_chats, warnings

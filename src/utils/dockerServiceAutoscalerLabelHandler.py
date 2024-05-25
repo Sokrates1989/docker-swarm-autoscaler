@@ -382,6 +382,13 @@ class DockerServiceAutoscalerLabelHandler:
             warnings = [f"Label <EMPHASIZE_STRING_START_TAG>{label}</EMPHASIZE_STRING_END_TAG>: {warning}{provided_invalid_value_message_addendum}" for warning in warnings]
             # Merge warnings with errors.
             error_messages.extend(warnings)
+        elif value_type == "telegram_chat_id_list":
+            # Get warnings from converter utils.
+            valid_chat_ids, warnings = converterUtils.get_telegram_array_from_telegram_chats_list_string(value)
+            # Append custom label to each warning.
+            warnings = [f"Label <EMPHASIZE_STRING_START_TAG>{label}</EMPHASIZE_STRING_END_TAG>: {warning}{provided_invalid_value_message_addendum}" for warning in warnings]
+            # Merge warnings with errors.
+            error_messages.extend(warnings)
 
         else: 
             error_messages.append(f"DockerServiceAutoscalerLabelHandler._verify_label(): Unknown value type <EMPHASIZE_STRING_START_TAG>{value_type}</EMPHASIZE_STRING_END_TAG> for label <EMPHASIZE_STRING_START_TAG>{label}</EMPHASIZE_STRING_END_TAG>")

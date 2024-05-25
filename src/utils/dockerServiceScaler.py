@@ -22,14 +22,10 @@ import converterUtils
 
 class DockerServiceScaler:
     """
-    A class for scaling Docker services and retrieving their current replicas.
+    A class for scaling Docker services.
 
     This class provides methods to scale Docker services to a specified number of replicas
     and retrieve the current number of replicas for a given service.
-
-    Methods:
-        scale_service: Scale the specified service to the given number of replicas.
-        get_current_replicas: Retrieve the current number of replicas for the specified service.
     """
 
     def __init__(self):

@@ -20,6 +20,13 @@ class MessagePlatformHandler:
         # Unknown service indicator.
         self._unknownServiceIndicator = "Global"
 
+        # Accumulated messages to send later via message platforms.
+        self._important_information_array = []
+        self._error_array = []
+        self._warning_array = []
+        self._information_array = []
+        self._verbose_information_array = []
+
         # Logger.
         self._logger = Logger.Logger(self, useDateStringUtils=useDateStringUtils)
 
@@ -68,8 +75,12 @@ class MessagePlatformHandler:
         self._logger.importantInfo(important_log_message, autoscale_service.get_service_log_level())
 
         ### Accumulate messages to send later ###
-        self._emailUtils.handle_important_info(important_info, autoscale_service, scaling_metrics)
-        self._telegramUtils.handle_important_info(important_info, autoscale_service, scaling_metrics)
+        important_info_dict = {
+            "message": important_info,
+            "autoscale_service": autoscale_service,
+            "scaling_metrics": scaling_metrics
+            }
+        self._important_information_array.append(important_info_dict)
 
     def handle_error(self, error_info, autoscale_service=None):
         """
@@ -89,11 +100,11 @@ class MessagePlatformHandler:
                 self._logger.error(error_info)
 
         ### Accumulate messages to send later ###
-        try:
-            self._emailUtils.handle_error(error_info, autoscale_service)
-            self._telegramUtils.handle_error(error_info, autoscale_service)
-        except AttributeError:
-            pass # In case the instantiation of the message platforms themself causes errors.
+        error_dict = {
+            "message": error_info,
+            "autoscale_service": autoscale_service
+            }
+        self._error_array.append(error_dict)
             
 
     def handle_warning(self, warning_info, autoscale_service=None, useDateStringUtils=True):
@@ -114,11 +125,11 @@ class MessagePlatformHandler:
                 self._logger.warning(warning_info, useDateStringUtils=useDateStringUtils)
 
         ### Accumulate messages to send later ###
-        try:
-            self._emailUtils.handle_warning(warning_info, autoscale_service)
-            self._telegramUtils.handle_warning(warning_info, autoscale_service)
-        except AttributeError:
-            pass # In case the instantiation of the message platform Utils themself causes errors.
+        warning_dict = {
+            "message": warning_info,
+            "autoscale_service": autoscale_service
+            }
+        self._warning_array.append(warning_dict)
             
 
         
@@ -142,11 +153,11 @@ class MessagePlatformHandler:
                 self._logger.information(information)
 
         ### Accumulate messages to send later ###
-        try:
-            self._emailUtils.handle_information(information, autoscale_service)
-            self._telegramUtils.handle_information(information, autoscale_service)
-        except AttributeError:
-            pass # In case the instantiation of the message platforms themself causes errors.
+        information_dict = {
+            "message": information,
+            "autoscale_service": autoscale_service
+            }
+        self._information_array.append(information_dict)
             
 
         
@@ -169,11 +180,11 @@ class MessagePlatformHandler:
                 self._logger.verboseInfo(verbose_info)
 
         ### Accumulate messages to send later ###
-        try:
-            self._emailUtils.handle_verbose_info(verbose_info, autoscale_service)
-            self._telegramUtils.handle_verbose_info(verbose_info, autoscale_service)
-        except AttributeError:
-            pass # In case the instantiation of the message platforms themself causes errors.
+        verbose_information_dict = {
+            "message": verbose_info,
+            "autoscale_service": autoscale_service
+            }
+        self._verbose_information_array.append(verbose_information_dict)
             
         
         
@@ -184,9 +195,35 @@ class MessagePlatformHandler:
         """
         Send all accumulated messages via all messaging platforms.
         """
-        if self._emailUtils:
+        try:
+            ### Handle accumulated messages ###
+            for important_information_dict in self._important_information_array: 
+                self._emailUtils.handle_important_info(important_information_dict["message"], important_information_dict["autoscale_service"], important_information_dict["scaling_metrics"])
+                self._telegramUtils.handle_important_info(important_information_dict["message"], important_information_dict["autoscale_service"], important_information_dict["scaling_metrics"])
+            
+            for error_dict in self._error_array: 
+                self._emailUtils.handle_error(error_dict["message"], error_dict["autoscale_service"])
+                self._telegramUtils.handle_error(error_dict["message"], error_dict["autoscale_service"])
+
+            for warning_dict in self._warning_array: 
+                self._emailUtils.handle_warning(warning_dict["message"], warning_dict["autoscale_service"])
+                self._telegramUtils.handle_warning(warning_dict["message"], warning_dict["autoscale_service"])
+
+            for information_dict in self._information_array: 
+                self._emailUtils.handle_information(information_dict["message"], information_dict["autoscale_service"])
+                self._telegramUtils.handle_information(information_dict["message"], information_dict["autoscale_service"])
+
+            for verbose_information_dict in self._verbose_information_array: 
+                self._emailUtils.handle_verbose_info(verbose_information_dict["message"], verbose_information_dict["autoscale_service"])
+                self._telegramUtils.handle_verbose_info(verbose_information_dict["message"], verbose_information_dict["autoscale_service"])
+
+            # Finally send all messages.
             self._emailUtils.send_all_accumulated_messages()
-        if self._telegramUtils:
             self._telegramUtils.send_all_accumulated_messages()
+
+        except Exception as e:
+            self.handle_error(f"MessagePlatformHandler.send_all_accumulated_messages(): Was not able to send messages via message platforms: <EMPHASIZE_STRING_START_TAG>{e}</EMPHASIZE_STRING_END_TAG>")
+            pass # In case the instantiation of the message platforms themself causes errors.
+        
         
         
